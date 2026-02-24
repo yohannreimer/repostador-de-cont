@@ -1,3 +1,5 @@
+version: "3.8"
+
 services:
   postgres:
     image: postgres:16
@@ -40,10 +42,8 @@ services:
       AI_PERSISTENCE_BACKEND: postgres
       OPENROUTER_HTTP_REFERER: ${OPENROUTER_HTTP_REFERER:-http://localhost:3000}
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - postgres
+      - redis
     volumes:
       - api_uploads:/app/apps/api/uploads
       - api_exports:/app/apps/api/exports
