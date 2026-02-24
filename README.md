@@ -179,8 +179,9 @@ Arquivos prontos para deploy:
    - `WEB_IMAGE` (ex.: `ghcr.io/seu-user/repostador-de-cont-web:latest`)
    - `NEXT_PUBLIC_API_URL` (ex.: `https://app.seudominio.com/api`)
    - `OPENROUTER_HTTP_REFERER` (ex.: `https://app.seudominio.com`)
-   - `OPENAI_API_KEY` e/ou `OPENROUTER_API_KEY`
-7. Clique `Deploy the stack`.
+   - `OPENAI_API_KEY` (opcional)
+7. Crie um Secret no Portainer com nome `openrouter_api_key` contendo sua chave OpenRouter.
+8. Clique `Deploy the stack`.
 
 ### 3. Portas e serviços
 

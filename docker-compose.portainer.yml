@@ -48,6 +48,8 @@ services:
     networks:
       - authority_internal
       - network_swarm_public
+    secrets:
+      - openrouter_api_key
     environment:
       API_PORT: 4000
       REDIS_URL: redis://authority_redis:6379
@@ -55,9 +57,10 @@ services:
       AI_PERSISTENCE_BACKEND: postgres
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_API_KEY_FILE: /run/secrets/openrouter_api_key
       OPENROUTER_DEFAULT_MODEL: ${OPENROUTER_DEFAULT_MODEL:-google/gemini-2.5-flash}
       OPENROUTER_HTTP_REFERER: ${OPENROUTER_HTTP_REFERER:-https://authoritypack.yrdnegocios.com.br}
-      OPENROUTER_APP_TITLE: ${OPENROUTER_APP_TITLE:-Authority Distribution Engine}
+      OPENROUTER_APP_NAME: ${OPENROUTER_APP_NAME:-Authority Distribution Engine}
     volumes:
       - authority_api_uploads:/app/apps/api/uploads
       - authority_api_exports:/app/apps/api/exports
@@ -126,3 +129,7 @@ networks:
     external: true
   authority_internal:
     driver: overlay
+
+secrets:
+  openrouter_api_key:
+    external: true
