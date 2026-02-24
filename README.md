@@ -164,31 +164,31 @@ Arquivos prontos para deploy:
 ### 1. Pré-requisitos
 
 1. Suba seu código para um repositório Git (GitHub/GitLab).
-2. Garanta que `.env` no servidor tenha as chaves reais:
-   - `OPENAI_API_KEY` e/ou `OPENROUTER_API_KEY`
-   - `NEXT_PUBLIC_API_URL` apontando para a URL pública da API (ex.: `https://api.seudominio.com`)
-   - `AI_PERSISTENCE_BACKEND=postgres`
+2. Publique imagens Docker para API e Web em um registry (ex.: GHCR).
+3. Garanta que a rede `network_swarm_public` existe no Swarm (Traefik).
 
 ### 2. Criar stack no Portainer
 
 1. Abra Portainer -> `Stacks` -> `Add stack`.
 2. Nome: `authority-engine`.
 3. Escolha `Repository` e aponte para seu repositório.
-4. Em `Compose path`, use `docker-compose.portainer.yml`.
-5. Em `Environment variables`, sobrescreva se necessário:
-   - `NEXT_PUBLIC_API_URL`
-   - `OPENROUTER_HTTP_REFERER`
-   - `OPENAI_API_KEY`
-   - `OPENROUTER_API_KEY`
-6. Clique `Deploy the stack`.
+4. Em `Repository reference`, use `refs/heads/main`.
+5. Em `Compose path`, use `docker-compose.portainer.yml`.
+6. Em `Environment variables`, preencha:
+   - `API_IMAGE` (ex.: `ghcr.io/seu-user/repostador-de-cont-api:latest`)
+   - `WEB_IMAGE` (ex.: `ghcr.io/seu-user/repostador-de-cont-web:latest`)
+   - `NEXT_PUBLIC_API_URL` (ex.: `https://api.seudominio.com`)
+   - `OPENROUTER_HTTP_REFERER` (ex.: `https://app.seudominio.com`)
+   - `OPENAI_API_KEY` e/ou `OPENROUTER_API_KEY`
+7. Clique `Deploy the stack`.
 
 ### 3. Portas e serviços
 
-- Web: `3000`
-- API: `4000`
-- Postgres: volume `pgdata`
-- Redis: volume `redisdata`
-- Uploads/exports API: volumes `api_uploads` e `api_exports`
+- Web: roteado pelo Traefik para `authoritypack.yrdnegocios.com.br`
+- API: roteada pelo Traefik para `api.authoritypack.yrdnegocios.com.br`
+- Postgres: volume `authority_pgdata`
+- Redis: volume `authority_redisdata`
+- Uploads/exports API: volumes `authority_api_uploads` e `authority_api_exports`
 
 ### 4. Pós deploy
 

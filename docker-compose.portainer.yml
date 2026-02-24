@@ -1,73 +1,124 @@
-version: "3.8"
+version: "3.7"
 
 services:
-  postgres:
+  authority_postgres:
     image: postgres:16
-    restart: unless-stopped
+    networks:
+      - authority_internal
+    volumes:
+      - authority_pgdata:/var/lib/postgresql/data
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: authority_engine
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d authority_engine"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+      restart_policy:
+        condition: on-failure
 
-  redis:
+  authority_redis:
     image: redis:7
-    restart: unless-stopped
+    networks:
+      - authority_internal
     volumes:
-      - redisdata:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+      - authority_redisdata:/data
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+      restart_policy:
+        condition: on-failure
 
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: api
-    restart: unless-stopped
+  authority_api:
+    image: ${API_IMAGE:-ghcr.io/yohannreimer/repostador-de-cont-api:latest}
+    networks:
+      - authority_internal
+      - network_swarm_public
     environment:
       API_PORT: 4000
-      REDIS_URL: redis://redis:6379
-      DATABASE_URL: postgres://postgres:postgres@postgres:5432/authority_engine
+      REDIS_URL: redis://authority_redis:6379
+      DATABASE_URL: postgres://postgres:postgres@authority_postgres:5432/authority_engine
       AI_PERSISTENCE_BACKEND: postgres
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       OPENROUTER_DEFAULT_MODEL: ${OPENROUTER_DEFAULT_MODEL:-google/gemini-2.5-flash}
-      OPENROUTER_HTTP_REFERER: ${OPENROUTER_HTTP_REFERER:-http://localhost:3000}
+      OPENROUTER_HTTP_REFERER: ${OPENROUTER_HTTP_REFERER:-https://authoritypack.yrdnegocios.com.br}
       OPENROUTER_APP_TITLE: ${OPENROUTER_APP_TITLE:-Authority Distribution Engine}
-    depends_on:
-      - postgres
-      - redis
     volumes:
-      - api_uploads:/app/apps/api/uploads
-      - api_exports:/app/apps/api/exports
-    ports:
-      - "4000:4000"
+      - authority_api_uploads:/app/apps/api/uploads
+      - authority_api_exports:/app/apps/api/exports
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 1024M
+      restart_policy:
+        condition: on-failure
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=network_swarm_public
+        - traefik.http.routers.authority-api.rule=Host(`api.authoritypack.yrdnegocios.com.br`)
+        - traefik.http.routers.authority-api.entrypoints=websecure
+        - traefik.http.routers.authority-api.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.authority-api.service=authority-api
+        - traefik.http.services.authority-api.loadbalancer.server.port=4000
 
-  web:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: web
-    restart: unless-stopped
+  authority_web:
+    image: ${WEB_IMAGE:-ghcr.io/yohannreimer/repostador-de-cont-web:latest}
+    networks:
+      - authority_internal
+      - network_swarm_public
     environment:
       WEB_PORT: 3000
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
-    depends_on:
-      - api
-    ports:
-      - "3000:3000"
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.authoritypack.yrdnegocios.com.br}
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=network_swarm_public
+        - traefik.http.routers.authority-web.rule=Host(`authoritypack.yrdnegocios.com.br`)
+        - traefik.http.routers.authority-web.entrypoints=websecure
+        - traefik.http.routers.authority-web.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.authority-web.service=authority-web
+        - traefik.http.services.authority-web.loadbalancer.server.port=3000
 
 volumes:
-  pgdata:
-  redisdata:
-  api_uploads:
-  api_exports:
+  authority_pgdata:
+  authority_redisdata:
+  authority_api_uploads:
+  authority_api_exports:
+
+networks:
+  network_swarm_public:
+    external: true
+  authority_internal:
+    driver: overlay
