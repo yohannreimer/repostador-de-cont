@@ -25,7 +25,39 @@ import type {
   UploadSrtResponse
 } from "@authority/shared";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+function normalizeApiBaseUrl(raw: string | undefined): string {
+  const fallback =
+    typeof window !== "undefined" ? `${window.location.origin}/api` : "http://localhost:4000";
+  const candidate = (raw ?? "").trim();
+
+  if (!candidate) {
+    return fallback;
+  }
+
+  const withoutTrailingSlash = candidate.replace(/\/+$/, "");
+
+  if (withoutTrailingSlash.startsWith("/")) {
+    return withoutTrailingSlash;
+  }
+
+  if (/^https?:\/\//i.test(withoutTrailingSlash)) {
+    return withoutTrailingSlash;
+  }
+
+  // Accept host/path values passed without scheme in deployment dashboards.
+  if (/^[a-z0-9.-]+\.[a-z]{2,}(:\d+)?(\/.*)?$/i.test(withoutTrailingSlash)) {
+    return `https://${withoutTrailingSlash}`;
+  }
+
+  return withoutTrailingSlash;
+}
+
+const API_URL = normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
+
+function apiUrl(pathname: string): string {
+  const path = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  return `${API_URL}${path}`;
+}
 
 interface CreateProjectResponse {
   project: {
@@ -40,7 +72,7 @@ interface ProjectsResponse {
 }
 
 export async function createProject(name: string): Promise<CreateProjectResponse["project"]> {
-  const response = await fetch(`${API_URL}/projects`, {
+  const response = await fetch(apiUrl("/projects"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name })
@@ -55,7 +87,7 @@ export async function createProject(name: string): Promise<CreateProjectResponse
 }
 
 export async function getProjects(): Promise<Project[]> {
-  const response = await fetch(`${API_URL}/projects`, { cache: "no-store" });
+  const response = await fetch(apiUrl("/projects"), { cache: "no-store" });
 
   if (!response.ok) {
     throw new Error("Failed to fetch projects");
@@ -66,7 +98,7 @@ export async function getProjects(): Promise<Project[]> {
 }
 
 export async function getProjectHistory(projectId: string): Promise<ProjectHistoryResponse> {
-  const response = await fetch(`${API_URL}/projects/${projectId}/history`, {
+  const response = await fetch(apiUrl(`/projects/${projectId}/history`), {
     cache: "no-store"
   });
 
@@ -89,7 +121,7 @@ export async function uploadSrt(
     data.set("generationProfile", JSON.stringify(options.generationProfile));
   }
 
-  const response = await fetch(`${API_URL}/projects/${projectId}/srts`, {
+  const response = await fetch(apiUrl(`/projects/${projectId}/srts`), {
     method: "POST",
     body: data
   });
@@ -107,7 +139,7 @@ export async function updateSrtGenerationProfile(
   generationProfile: GenerationProfile,
   rerun = true
 ): Promise<UpdateSrtProfileResponse> {
-  const response = await fetch(`${API_URL}/srts/${srtId}/profile`, {
+  const response = await fetch(apiUrl(`/srts/${srtId}/profile`), {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ generationProfile, rerun })
@@ -122,7 +154,7 @@ export async function updateSrtGenerationProfile(
 }
 
 export async function getSrtDetail(srtId: string): Promise<SrtDetailResponse> {
-  const response = await fetch(`${API_URL}/srts/${srtId}`, { cache: "no-store" });
+  const response = await fetch(apiUrl(`/srts/${srtId}`), { cache: "no-store" });
 
   if (!response.ok) {
     throw new Error("Failed to fetch SRT detail");
@@ -132,7 +164,7 @@ export async function getSrtDetail(srtId: string): Promise<SrtDetailResponse> {
 }
 
 export async function getSrtJobs(srtId: string): Promise<SrtJobsResponse> {
-  const response = await fetch(`${API_URL}/srts/${srtId}/jobs`, { cache: "no-store" });
+  const response = await fetch(apiUrl(`/srts/${srtId}/jobs`), { cache: "no-store" });
 
   if (!response.ok) {
     throw new Error("Failed to fetch SRT jobs");
@@ -142,7 +174,7 @@ export async function getSrtJobs(srtId: string): Promise<SrtJobsResponse> {
 }
 
 export async function getSrtAssets(srtId: string): Promise<SrtAssetsResponse> {
-  const response = await fetch(`${API_URL}/srts/${srtId}/assets`, { cache: "no-store" });
+  const response = await fetch(apiUrl(`/srts/${srtId}/assets`), { cache: "no-store" });
 
   if (!response.ok) {
     throw new Error("Failed to fetch generated assets");
@@ -152,7 +184,7 @@ export async function getSrtAssets(srtId: string): Promise<SrtAssetsResponse> {
 }
 
 export async function downloadSrtPdfExport(srtId: string): Promise<Blob> {
-  const response = await fetch(`${API_URL}/srts/${srtId}/export/pdf`, {
+  const response = await fetch(apiUrl(`/srts/${srtId}/export/pdf`), {
     cache: "no-store"
   });
 
@@ -165,7 +197,7 @@ export async function downloadSrtPdfExport(srtId: string): Promise<Blob> {
 }
 
 export async function downloadSrtTxtExport(srtId: string): Promise<Blob> {
-  const response = await fetch(`${API_URL}/srts/${srtId}/export/txt`, {
+  const response = await fetch(apiUrl(`/srts/${srtId}/export/txt`), {
     cache: "no-store"
   });
 
@@ -178,7 +210,7 @@ export async function downloadSrtTxtExport(srtId: string): Promise<Blob> {
 }
 
 export async function downloadSrtMarkdownExport(srtId: string): Promise<Blob> {
-  const response = await fetch(`${API_URL}/srts/${srtId}/export/markdown`, {
+  const response = await fetch(apiUrl(`/srts/${srtId}/export/markdown`), {
     cache: "no-store"
   });
 
@@ -191,7 +223,7 @@ export async function downloadSrtMarkdownExport(srtId: string): Promise<Blob> {
 }
 
 export async function getSrtDiagnostics(srtId: string): Promise<SrtDiagnosticsResponse> {
-  const response = await fetch(`${API_URL}/srts/${srtId}/diagnostics`, {
+  const response = await fetch(apiUrl(`/srts/${srtId}/diagnostics`), {
     cache: "no-store"
   });
 
@@ -206,7 +238,7 @@ export async function getSrtAssetByType(
   srtId: string,
   type: GeneratedAssetType
 ): Promise<SrtAssetByTypeResponse> {
-  const response = await fetch(`${API_URL}/srts/${srtId}/assets/${type}`, {
+  const response = await fetch(apiUrl(`/srts/${srtId}/assets/${type}`), {
     cache: "no-store"
   });
 
@@ -223,7 +255,7 @@ export async function refineSrtAsset(
   action: AssetRefineAction,
   instruction?: string
 ): Promise<RefineAssetResponse> {
-  const response = await fetch(`${API_URL}/srts/${srtId}/assets/${type}/refine`, {
+  const response = await fetch(apiUrl(`/srts/${srtId}/assets/${type}/refine`), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -248,7 +280,7 @@ export async function refineSrtAssetBlock(
   instruction?: string,
   evidenceOnly = false
 ): Promise<RefineAssetBlockResponse> {
-  const response = await fetch(`${API_URL}/srts/${srtId}/assets/${type}/blocks/refine`, {
+  const response = await fetch(apiUrl(`/srts/${srtId}/assets/${type}/blocks/refine`), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -272,7 +304,7 @@ export async function selectSrtAssetVariant(
   task: AITask,
   variant: number
 ): Promise<SelectAssetVariantResponse> {
-  const response = await fetch(`${API_URL}/srts/${srtId}/diagnostics/${task}/select-variant`, {
+  const response = await fetch(apiUrl(`/srts/${srtId}/diagnostics/${task}/select-variant`), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ variant })
@@ -291,7 +323,7 @@ export async function saveSrtAssetManual(
   type: GeneratedAssetType,
   payload: GeneratedAssetPayload
 ): Promise<SaveAssetManualResponse> {
-  const response = await fetch(`${API_URL}/srts/${srtId}/assets/${type}/manual`, {
+  const response = await fetch(apiUrl(`/srts/${srtId}/assets/${type}/manual`), {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ payload })
@@ -306,7 +338,7 @@ export async function saveSrtAssetManual(
 }
 
 export async function getAiRouting(): Promise<AIRoutingResponse> {
-  const response = await fetch(`${API_URL}/ai/routing`, { cache: "no-store" });
+  const response = await fetch(apiUrl("/ai/routing"), { cache: "no-store" });
 
   if (!response.ok) {
     throw new Error("Failed to fetch AI routing");
@@ -316,7 +348,7 @@ export async function getAiRouting(): Promise<AIRoutingResponse> {
 }
 
 export async function getAiPreferences(): Promise<AIPreferencesResponse> {
-  const response = await fetch(`${API_URL}/ai/preferences`, { cache: "no-store" });
+  const response = await fetch(apiUrl("/ai/preferences"), { cache: "no-store" });
 
   if (!response.ok) {
     throw new Error("Failed to fetch AI preferences");
@@ -329,7 +361,7 @@ export async function patchAiPreferences(patch: {
   generationProfile?: GenerationProfile;
   modelFamilyByTask?: Partial<OpenRouterModelFamilyByTask>;
 }): Promise<AIPreferencesResponse> {
-  const response = await fetch(`${API_URL}/ai/preferences`, {
+  const response = await fetch(apiUrl("/ai/preferences"), {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(patch)
@@ -351,7 +383,7 @@ export async function patchAiRouting(
         judgeRouting?: Partial<Record<AITask, Partial<AIRoute>>>;
       }
 ): Promise<AIRoutingResponse> {
-  const response = await fetch(`${API_URL}/ai/routing`, {
+  const response = await fetch(apiUrl("/ai/routing"), {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(patch)
@@ -369,13 +401,13 @@ export async function getAiModels(
   provider: "openai" | "openrouter",
   forceRefresh = false
 ): Promise<AIModelsResponse> {
-  const url = new URL(`${API_URL}/ai/models`);
-  url.searchParams.set("provider", provider);
+  const search = new URLSearchParams({ provider });
   if (forceRefresh) {
-    url.searchParams.set("force_refresh", "1");
+    search.set("force_refresh", "1");
   }
-
-  const response = await fetch(url.toString(), { cache: "no-store" });
+  const response = await fetch(`${apiUrl("/ai/models")}?${search.toString()}`, {
+    cache: "no-store"
+  });
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: "Failed to fetch AI models" }));
@@ -386,7 +418,7 @@ export async function getAiModels(
 }
 
 export async function getAiPrompts(): Promise<PromptCatalogResponse> {
-  const response = await fetch(`${API_URL}/ai/prompts`, { cache: "no-store" });
+  const response = await fetch(apiUrl("/ai/prompts"), { cache: "no-store" });
 
   if (!response.ok) {
     throw new Error("Failed to fetch AI prompts");
@@ -404,7 +436,7 @@ export async function createAiPromptVersion(
     activate?: boolean;
   }
 ): Promise<PromptCatalogResponse> {
-  const response = await fetch(`${API_URL}/ai/prompts/${task}/versions`, {
+  const response = await fetch(apiUrl(`/ai/prompts/${task}/versions`), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input)
@@ -422,7 +454,7 @@ export async function activateAiPromptVersion(
   task: AITask,
   version: number
 ): Promise<PromptCatalogResponse> {
-  const response = await fetch(`${API_URL}/ai/prompts/${task}/activate`, {
+  const response = await fetch(apiUrl(`/ai/prompts/${task}/activate`), {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ version })
