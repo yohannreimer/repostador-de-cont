@@ -1,0 +1,15 @@
+node_modules
+.npm
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+coverage
+build
+dist
+.next
+apps/api/uploads/*
+!apps/api/uploads/.gitkeep
+apps/api/exports/*
+!apps/api/exports/.gitkeep

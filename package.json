@@ -1,0 +1,19 @@
+{
+  "name": "authority-distribution-engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Monorepo for Authority Distribution Engine",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "dev": "npm run dev --workspaces",
+    "test": "npm run test --workspaces",
+    "typecheck": "npm run typecheck --workspaces"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
