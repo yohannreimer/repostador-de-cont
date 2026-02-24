@@ -177,7 +177,7 @@ Arquivos prontos para deploy:
 6. Em `Environment variables`, preencha:
    - `API_IMAGE` (ex.: `ghcr.io/seu-user/repostador-de-cont-api:latest`)
    - `WEB_IMAGE` (ex.: `ghcr.io/seu-user/repostador-de-cont-web:latest`)
-   - `NEXT_PUBLIC_API_URL` (ex.: `https://api.seudominio.com`)
+   - `NEXT_PUBLIC_API_URL` (ex.: `https://app.seudominio.com/api`)
    - `OPENROUTER_HTTP_REFERER` (ex.: `https://app.seudominio.com`)
    - `OPENAI_API_KEY` e/ou `OPENROUTER_API_KEY`
 7. Clique `Deploy the stack`.
@@ -185,7 +185,7 @@ Arquivos prontos para deploy:
 ### 3. Portas e serviços
 
 - Web: roteado pelo Traefik para `authoritypack.yrdnegocios.com.br`
-- API: roteada pelo Traefik para `api.authoritypack.yrdnegocios.com.br`
+- API: roteada no mesmo dominio via path `authoritypack.yrdnegocios.com.br/api`
 - Postgres: volume `authority_pgdata`
 - Redis: volume `authority_redisdata`
 - Uploads/exports API: volumes `authority_api_uploads` e `authority_api_exports`
