@@ -29,8 +29,11 @@ export async function POST(request: Request): Promise<NextResponse> {
   const config = getAuthConfig();
   const username = payload.username?.trim() ?? "";
   const password = payload.password ?? "";
+  const isValid = config.credentials.some(
+    (credential) => credential.user === username && credential.password === password
+  );
 
-  if (username !== config.user || password !== config.password) {
+  if (!isValid) {
     return NextResponse.json(
       { error: "Credenciais invalidas." },
       {
