@@ -180,7 +180,6 @@ type WorkspaceStage =
   | "prompts"
   | "guidelines"
   | "project"
-  | "history"
   | "results";
 
 type ResultsWorkspaceView = "overview" | "quality" | "variants" | "studio";
@@ -241,12 +240,6 @@ const WORKSPACE_STAGES: Array<{
     label: "Projeto e upload",
     shortLabel: "Projeto",
     description: "Crie projeto, envie SRT/TXT e inicie processamento."
-  },
-  {
-    key: "history",
-    label: "Historico de execucoes",
-    shortLabel: "Historico",
-    description: "Revise runs anteriores e reabra qualquer resultado em um clique."
   },
   {
     key: "results",
@@ -1515,6 +1508,7 @@ export function SrtWorkflow() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [historyProjectId, setHistoryProjectId] = useState("");
   const [historyItems, setHistoryItems] = useState<ProjectHistoryItem[]>([]);
+  const [showHistoryPanel, setShowHistoryPanel] = useState(false);
   const [generationProfile, setGenerationProfile] = useState<GenerationProfile>(
     cloneGenerationProfile(DEFAULT_GENERATION_PROFILE)
   );
@@ -1922,11 +1916,6 @@ export function SrtWorkflow() {
         done: Boolean(srtId)
       },
       {
-        id: "history",
-        label: "Historico populado",
-        done: historyItems.length > 0
-      },
-      {
         id: "outputs",
         label: "Outputs prontos",
         done: readyAssets > 0
@@ -1951,7 +1940,6 @@ export function SrtWorkflow() {
     configuredKeys.openai,
     configuredKeys.openrouter,
     diagnostics,
-    historyItems.length,
     projectId,
     srtId
   ]);
@@ -2069,9 +2057,39 @@ export function SrtWorkflow() {
     () => WORKSPACE_STAGES[Math.max(0, workspaceStageIndex)] ?? WORKSPACE_STAGES[0],
     [workspaceStageIndex]
   );
+
+  const workspaceStageCompletion = useMemo<Record<WorkspaceStage, boolean>>(
+    () => ({
+      models: commandCenter.providersConnected > 0,
+      prompts: Boolean(promptCatalog),
+      guidelines: Boolean(generationProfile.goal.trim()) && Boolean(generationProfile.tone.trim()),
+      project: Boolean(projectId) && Boolean(srtId),
+      results: commandCenter.readyAssets > 0 || diagnostics.length > 0
+    }),
+    [
+      commandCenter.providersConnected,
+      commandCenter.readyAssets,
+      diagnostics.length,
+      generationProfile.goal,
+      generationProfile.tone,
+      projectId,
+      promptCatalog,
+      srtId
+    ]
+  );
+
+  const workspaceCompletedStages = useMemo(
+    () => Object.values(workspaceStageCompletion).filter(Boolean).length,
+    [workspaceStageCompletion]
+  );
+
   const workspaceCompletionPct = useMemo(
-    () => Math.max(0, Math.min(100, Math.round(((workspaceStageIndex + 1) / WORKSPACE_STAGES.length) * 100))),
-    [workspaceStageIndex]
+    () =>
+      Math.max(
+        0,
+        Math.min(100, Math.round((workspaceCompletedStages / WORKSPACE_STAGES.length) * 100))
+      ),
+    [workspaceCompletedStages]
   );
 
   const canGoPrevStage = workspaceStageIndex > 0;
@@ -2892,13 +2910,13 @@ export function SrtWorkflow() {
                 style={{ width: `${workspaceCompletionPct}%` }}
               />
             </div>
-            <div className="mt-3 grid gap-2 md:grid-cols-6">
+            <div className="mt-3 grid gap-2 md:grid-cols-5">
               {WORKSPACE_STAGES.map((stage, index) => {
                 const isActive = stage.key === workspaceStage;
-                const isPast = index < workspaceStageIndex;
+                const isDone = workspaceStageCompletion[stage.key];
                 const stageTone = isActive
                   ? "border-slate-900 bg-slate-900 text-white shadow-lg shadow-slate-900/20"
-                  : isPast
+                  : isDone
                     ? "border-emerald-300 bg-emerald-50 text-emerald-800"
                     : "border-slate-200 bg-white text-slate-700 hover:border-slate-400";
                 return (
@@ -2922,6 +2940,15 @@ export function SrtWorkflow() {
                 <strong>Etapa atual:</strong> {workspaceStageMeta.label}. {workspaceStageMeta.description}
               </p>
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowHistoryPanel((current) => !current)}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-500"
+                >
+                  {showHistoryPanel
+                    ? "Ocultar historico"
+                    : `Historico (${historyItems.length})`}
+                </button>
                 <button
                   type="button"
                   onClick={() => moveWorkspaceStage(-1)}
@@ -3024,7 +3051,7 @@ export function SrtWorkflow() {
           <div className="mt-4 space-y-2">
             {WORKSPACE_STAGES.map((stage, index) => {
               const isActive = stage.key === workspaceStage;
-              const isPast = index < workspaceStageIndex;
+              const isDone = workspaceStageCompletion[stage.key];
               return (
                 <button
                   key={`sidebar-stage-${stage.key}`}
@@ -3033,7 +3060,7 @@ export function SrtWorkflow() {
                   className={`animate-premium-in w-full rounded-xl border px-3 py-2 text-left text-xs transition ${
                     isActive
                       ? "border-slate-900 bg-slate-900 text-white"
-                      : isPast
+                      : isDone
                         ? "border-emerald-300 bg-emerald-50 text-emerald-800"
                         : "border-slate-200 bg-white text-slate-700 hover:border-slate-400"
                   }`}
@@ -3043,6 +3070,17 @@ export function SrtWorkflow() {
                 </button>
               );
             })}
+            <button
+              type="button"
+              onClick={() => setShowHistoryPanel((current) => !current)}
+              className={`w-full rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+                showHistoryPanel
+                  ? "border-cyan-300 bg-cyan-50 text-cyan-800"
+                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-400"
+              }`}
+            >
+              Historico de execucoes ({historyItems.length})
+            </button>
           </div>
         </div>
       </aside>
@@ -4243,11 +4281,11 @@ export function SrtWorkflow() {
       </>
       ) : null}
 
-      {workspaceStage === "history" ? (
+      {showHistoryPanel ? (
       <div className="md:col-span-2 rounded-3xl border border-slate-200/80 bg-gradient-to-br from-white via-indigo-50/25 to-cyan-50/30 p-6 shadow-[0_18px_45px_-28px_rgba(15,23,42,0.35)] backdrop-blur">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">5. Historico de execucoes</h2>
+            <h2 className="text-xl font-bold text-slate-900">Historico de execucoes</h2>
             <p className="mt-1 text-sm text-slate-600">
               Reabra qualquer run para revisar saídas, custos e status sem repetir upload.
             </p>
@@ -4268,6 +4306,13 @@ export function SrtWorkflow() {
               className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-700 disabled:opacity-60"
             >
               Ir para resultados
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowHistoryPanel(false)}
+              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-500"
+            >
+              Fechar
             </button>
           </div>
         </div>
@@ -4382,7 +4427,7 @@ export function SrtWorkflow() {
 
       {workspaceStage === "results" ? (
       <div id="pipeline" className="md:col-span-2 rounded-3xl border border-slate-200/80 bg-gradient-to-br from-white via-slate-50 to-blue-50/20 p-6 shadow-[0_18px_45px_-28px_rgba(15,23,42,0.35)] backdrop-blur">
-        <h2 className="text-xl font-bold text-slate-900">6. Resultados e ajustes</h2>
+        <h2 className="text-xl font-bold text-slate-900">5. Resultados e ajustes</h2>
 
         {error ? <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
 

@@ -30,7 +30,7 @@ export default function HomePage() {
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-2xl border border-slate-200 bg-white/85 p-3 shadow-sm">
             <p className="text-[11px] uppercase tracking-wide text-slate-500">Fluxo guiado</p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">6 etapas claras</p>
+            <p className="mt-1 text-sm font-semibold text-slate-900">5 etapas + historico separado</p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white/85 p-3 shadow-sm">
             <p className="text-[11px] uppercase tracking-wide text-slate-500">Qualidade real</p>
