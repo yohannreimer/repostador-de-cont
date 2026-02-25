@@ -8,9 +8,19 @@ export default function HomePage() {
       <div className="pointer-events-none absolute left-1/2 top-56 h-64 w-64 -translate-x-1/2 rounded-full bg-cyan-100/40 blur-3xl" />
 
       <header className="mx-auto max-w-[1320px] px-4 pt-10 md:px-6">
-        <p className="inline-flex rounded-full border border-slate-300 bg-white/85 px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm">
-          Authority Distribution Engine · Quality OS
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="inline-flex rounded-full border border-slate-300 bg-white/85 px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm">
+            Authority Distribution Engine · Quality OS
+          </p>
+          <form action="/auth/logout" method="post">
+            <button
+              type="submit"
+              className="rounded-lg border border-slate-300 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-slate-500 hover:bg-white"
+            >
+              Sair
+            </button>
+          </form>
+        </div>
         <h1 className="mt-4 text-3xl font-black tracking-tight text-slate-900 md:text-5xl">
           Workspace premium para repurpose multicanal
         </h1>

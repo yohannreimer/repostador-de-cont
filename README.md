@@ -199,6 +199,17 @@ Arquivos prontos para deploy:
    - upload de SRT/TXT
    - validar aba `Historico` após reiniciar stack (dados devem continuar)
 
+## Proteção de acesso do Frontend
+
+O frontend agora possui gate de login simples no próprio app.
+
+- URL: `/login`
+- Credenciais hardcoded:
+  - login: `admin`
+  - senha: `admin123`
+
+Ao autenticar, o app grava cookie de sessão e libera acesso ao workspace. Para sair, use o botão `Sair` no topo.
+
 ## Próximos passos sugeridos
 
 1. Trocar store in-memory por repositórios Postgres reais.
