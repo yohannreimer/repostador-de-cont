@@ -8,8 +8,8 @@ export interface AuthConfig {
 
 export function getAuthConfig(): AuthConfig {
   return {
-    user: "admin",
-    password: "admin123",
+    user: "yohannreimer",
+    password: "G%t91*f7-@abf?HF",
     sessionToken: "authority-ok"
   };
 }
