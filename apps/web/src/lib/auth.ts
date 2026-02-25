@@ -29,12 +29,6 @@ export function getAuthConfig(): AuthConfig {
     password: "G%t91*f7-@abf?HF"
   });
 
-  // Transitional fallback to avoid lockout while images are rolling.
-  credentials.push({
-    user: "admin",
-    password: "admin123"
-  });
-
   return {
     credentials,
     sessionToken: "authority-ok"
