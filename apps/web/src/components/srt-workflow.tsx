@@ -249,6 +249,35 @@ const WORKSPACE_STAGES: Array<{
   }
 ];
 
+type WorkflowMode = "setup" | "create" | "generate" | "review";
+
+const WORKFLOW_MODES: Array<{
+  key: WorkflowMode;
+  label: string;
+  description: string;
+}> = [
+  {
+    key: "setup",
+    label: "Setup",
+    description: "Conectar IA, prompts e diretrizes."
+  },
+  {
+    key: "create",
+    label: "Create",
+    description: "Criar projeto e enviar transcricao."
+  },
+  {
+    key: "generate",
+    label: "Generate",
+    description: "Executar pipeline e monitorar run."
+  },
+  {
+    key: "review",
+    label: "Review",
+    description: "Revisar, refinar e publicar."
+  }
+];
+
 type ProfilePresetId = "growth" | "authority" | "conversion";
 
 const PROFILE_PRESETS: Array<{
@@ -1901,24 +1930,29 @@ export function SrtWorkflow() {
 
     const steps = [
       {
-        id: "routing",
-        label: "IA conectada",
+        id: "models",
+        label: "Modelos",
         done: providersConnected > 0
       },
       {
+        id: "prompts",
+        label: "Prompts",
+        done: Boolean(promptCatalog)
+      },
+      {
+        id: "guidelines",
+        label: "Diretrizes",
+        done: Boolean(generationProfile.goal.trim()) && Boolean(generationProfile.tone.trim())
+      },
+      {
         id: "project",
-        label: "Projeto criado",
-        done: Boolean(projectId)
+        label: "Projeto",
+        done: Boolean(projectId) && Boolean(srtId)
       },
       {
-        id: "upload",
-        label: "Upload processado",
-        done: Boolean(srtId)
-      },
-      {
-        id: "outputs",
-        label: "Outputs prontos",
-        done: readyAssets > 0
+        id: "results",
+        label: "Resultados",
+        done: readyAssets > 0 || diagnostics.length > 0
       }
     ];
 
@@ -1940,7 +1974,10 @@ export function SrtWorkflow() {
     configuredKeys.openai,
     configuredKeys.openrouter,
     diagnostics,
+    generationProfile.goal,
+    generationProfile.tone,
     projectId,
+    promptCatalog,
     srtId
   ]);
 
@@ -2083,6 +2120,59 @@ export function SrtWorkflow() {
     [workspaceStageCompletion]
   );
 
+  const workflowMode = useMemo<WorkflowMode>(() => {
+    if (workspaceStage === "models" || workspaceStage === "prompts" || workspaceStage === "guidelines") {
+      return "setup";
+    }
+    if (workspaceStage === "project") {
+      return "create";
+    }
+    if (workspaceStage === "results" && resultsView === "overview") {
+      return "generate";
+    }
+    return "review";
+  }, [resultsView, workspaceStage]);
+
+  const workflowModeCompletion = useMemo<Record<WorkflowMode, boolean>>(
+    () => ({
+      setup:
+        workspaceStageCompletion.models &&
+        workspaceStageCompletion.prompts &&
+        workspaceStageCompletion.guidelines,
+      create: workspaceStageCompletion.project,
+      generate: Boolean(srtId) && jobs.length > 0,
+      review: workspaceStageCompletion.results
+    }),
+    [jobs.length, srtId, workspaceStageCompletion]
+  );
+
+  const nextGuidedAction = useMemo(() => {
+    if (!workspaceStageCompletion.models) {
+      return "Conecte pelo menos um provider de IA e salve o roteamento.";
+    }
+    if (!workspaceStageCompletion.prompts) {
+      return "Revise os prompts ativos para cada canal antes de gerar.";
+    }
+    if (!workspaceStageCompletion.guidelines) {
+      return "Defina objetivo, tom e diretrizes para reduzir output generico.";
+    }
+    if (!workspaceStageCompletion.project) {
+      return "Crie o projeto e envie o arquivo SRT/TXT para iniciar.";
+    }
+    if (!workspaceStageCompletion.results) {
+      return "Acompanhe o pipeline em Results e rode refino quando ficar abaixo da meta.";
+    }
+    return "Pipeline pronto. Revise no Content Studio e exporte para publicação.";
+  }, [workspaceStageCompletion]);
+
+  const nextWorkflowMode = useMemo<WorkflowMode>(() => {
+    return WORKFLOW_MODES.find((mode) => !workflowModeCompletion[mode.key])?.key ?? "review";
+  }, [workflowModeCompletion]);
+
+  const nextWorkflowModeLabel = useMemo(() => {
+    return WORKFLOW_MODES.find((mode) => mode.key === nextWorkflowMode)?.label ?? "Review";
+  }, [nextWorkflowMode]);
+
   const workspaceCompletionPct = useMemo(
     () =>
       Math.max(
@@ -2101,6 +2191,24 @@ export function SrtWorkflow() {
       return;
     }
     setWorkspaceStage(WORKSPACE_STAGES[nextIndex].key);
+  };
+
+  const jumpToWorkflowMode = (mode: WorkflowMode) => {
+    if (mode === "setup") {
+      setWorkspaceStage("models");
+      return;
+    }
+    if (mode === "create") {
+      setWorkspaceStage("project");
+      return;
+    }
+    if (mode === "generate") {
+      setWorkspaceStage("results");
+      setResultsView("overview");
+      return;
+    }
+    setWorkspaceStage("results");
+    setResultsView("quality");
   };
 
   const loadModelCatalog = async (
@@ -2894,6 +3002,59 @@ export function SrtWorkflow() {
               <p className="mt-1 text-[11px] text-slate-500">
                 real {formatUsd(commandCenter.totalActualCost)} | {commandCenter.totalTokens} tokens
               </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 xl:grid-cols-[1.8fr_1fr]">
+            <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                  Macro fluxo guiado
+                </p>
+                <p className="text-xs font-semibold text-slate-700">
+                  modo atual: {WORKFLOW_MODES.find((mode) => mode.key === workflowMode)?.label ?? "Setup"}
+                </p>
+              </div>
+              <div className="mt-3 grid gap-2 md:grid-cols-4">
+                {WORKFLOW_MODES.map((mode) => {
+                  const isActive = mode.key === workflowMode;
+                  const isDone = workflowModeCompletion[mode.key];
+                  const tone = isActive
+                    ? "border-slate-900 bg-slate-900 text-white"
+                    : isDone
+                      ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-slate-400";
+
+                  return (
+                    <button
+                      key={`workflow-mode-${mode.key}`}
+                      type="button"
+                      onClick={() => jumpToWorkflowMode(mode.key)}
+                      className={`rounded-xl border px-3 py-2 text-left transition ${tone}`}
+                    >
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] opacity-80">
+                        {isDone ? "concluido" : isActive ? "em andamento" : "pendente"}
+                      </p>
+                      <p className="mt-1 text-xs font-semibold">{mode.label}</p>
+                      <p className="mt-1 text-[11px] opacity-80">{mode.description}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                Proxima acao sugerida
+              </p>
+              <p className="mt-2 text-sm font-semibold text-slate-900">{nextGuidedAction}</p>
+              <button
+                type="button"
+                onClick={() => jumpToWorkflowMode(nextWorkflowMode)}
+                className="mt-3 w-full rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-700"
+              >
+                Ir para {nextWorkflowModeLabel}
+              </button>
             </div>
           </div>
 
